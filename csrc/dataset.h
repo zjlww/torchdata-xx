@@ -1,16 +1,16 @@
 #pragma once
+#include "sampler.h"
 #include "types.h"
 
 namespace data {
 
 // Helper functions:
-DatasetHandle mapDataset(DatasetHandle, ItemTransform);
-DatasetHandle filterDataset(DatasetHandle, KeyPredicate);
+DatasetHandle mapDataset(DatasetHandle d, ItemTransform func);
+DatasetHandle filterDataset(DatasetHandle d, KeyPredicate pred);
 DatasetHandle zipDatasets(DatasetList const& datasets);
 DatasetHandle unionDatasets(DatasetList const& datasets);
-DatasetHandle prefixDataset(DatasetHandle, std::string_view);
-DatasetHandle loadShard(Path path);
-SamplerHandle sampleDataset(DatasetHandle);
+DatasetHandle prefixDataset(DatasetHandle d, std::string_view prefix);
+DatasetHandle loadShard(std::string_view path);
 
 // Dataset interface:
 struct Dataset : public std::enable_shared_from_this<Dataset> {
@@ -25,6 +25,8 @@ struct Dataset : public std::enable_shared_from_this<Dataset> {
     }
 
     virtual Item operator[](std::string_view key) = 0;
+    virtual Item getItem(size_t idx) { return (*this)[keys[idx]]; }
+    virtual std::string_view getKey(size_t idx) { return keys[idx]; }
 
     // Apply a transform to all the items in the Dataset.
     // The transform is lazy, only applied when operator[] is called.

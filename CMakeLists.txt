@@ -18,23 +18,22 @@ if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
     message(FATAL_ERROR "In-source builds are not allowed")
 endif()
 
-# Other Dependencies
 find_package(pybind11 REQUIRED)
-
-# Python:
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
-
-# PyTorch:
 include(cmake/torch.cmake)
+find_package (TBB REQUIRED)
+find_package (Boost REQUIRED COMPONENTS thread system)
 
 file(GLOB SRC_CPP "${CMAKE_CURRENT_SOURCE_DIR}/csrc/*.cpp")
 
+add_library(SHAREDEP INTERFACE)
+target_link_libraries(SHAREDEP INTERFACE Torch Boost::thread Boost::system tbb sox soxr)
+target_include_directories(SHAREDEP INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/csrc/")
+
 # Python Extension:
 pybind11_add_module(torchdataxx binding.cpp ${SRC_CPP})
-target_link_libraries(torchdataxx PRIVATE Torch)
-target_include_directories(torchdataxx PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/csrc/")
+target_link_libraries(torchdataxx PRIVATE SHAREDEP)
 
 # Testing Target:
 add_executable(test test.cpp ${SRC_CPP})
-target_link_libraries(test PRIVATE Torch)
-target_include_directories(test PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/csrc/")
+target_link_libraries(test PRIVATE SHAREDEP)

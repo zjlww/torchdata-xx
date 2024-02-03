@@ -144,10 +144,10 @@ DatasetHandle filterDataset(DatasetHandle base, KeyPredicate pred) {
 }
 
 struct LoadedShard final : Dataset {
-    Path path;
+    std::string path;
     torch::jit::Module m;
-    LoadedShard(Path path) : path{path} {
-        m = torch::jit::load(path.string());
+    LoadedShard(std::string_view path) : path{path} {
+        m = torch::jit::load(this->path);
         auto item_lst = m.named_modules();
         auto it = item_lst.begin();
         for (int i = 0; i < item_lst.size(); ++i) {
@@ -189,7 +189,7 @@ struct LoadedShard final : Dataset {
     }
 };
 
-DatasetHandle loadShard(Path path) {
+DatasetHandle loadShard(std::string_view path) {
     return std::make_shared<LoadedShard>(path);
 }
 

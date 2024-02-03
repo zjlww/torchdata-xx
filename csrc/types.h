@@ -6,7 +6,6 @@
 #include <any>
 #include <array>
 #include <cstdint>
-#include <filesystem>
 #include <functional>
 #include <initializer_list>
 #include <iostream>
@@ -31,10 +30,10 @@ struct BatchSampler;
 using BatchSamplerHandle = std::shared_ptr<BatchSampler>;
 
 // Data Types
-using Path = std::filesystem::path;
 using Tensor = torch::Tensor;
-using ValueType = std::variant<bool, int64_t, double, std::string, Path, Tensor,
-                               DatasetHandle>;
+using IValue = torch::IValue;
+using ValueType =
+    std::variant<bool, int64_t, double, std::string, Tensor, DatasetHandle>;
 using Item = std::map<std::string, ValueType>;
 using Partition = std::vector<std::tuple<int, int, int>>;
 
@@ -44,9 +43,12 @@ using ItemPredicate = std::function<bool(Item const&)>;
 using KeyPredicate = std::function<bool(std::string_view)>;
 
 // List Types
+using StringList = std::vector<std::string>;
+using DoubleList = std::vector<double>;
 using ItemList = std::vector<Item>;
 using KeyList = std::vector<std::string>;
 using DatasetList = std::vector<DatasetHandle>;
+using SamplerList = std::vector<SamplerHandle>;
 
 // Utility Templates
 // Concatente multiple std::vector<ElementType>.

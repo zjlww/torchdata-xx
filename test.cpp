@@ -1,12 +1,13 @@
+#include <torch/torch.h>
+#include <torch/types.h>
+
 #include <iostream>
 
-#include "dataset.h"
-#include "types.h"
-
 int main() {
-    auto dt = data::loadShard("./shit.pt");
-    auto item = (*dt)["123"];
-    std::cout << "successful" << std::endl;
-    std::cout << std::get<data::Tensor>(item["x"]) << std::endl;
-    return 0;
+    auto a = torch::empty({10}, torch::kInt32);
+    for (int i = 0; i < 10; ++i) {
+        auto b = a.data_ptr<int32_t>() + i;
+        *b = i;
+    }
+    std::cout << a << std::endl;
 }
