@@ -8,8 +8,8 @@
 
 namespace data {
 
-SamplerHandle mapSampler(SamplerHandle, ItemTransform);
-SamplerHandle filterSampler(SamplerHandle, ItemPredicate);
+SamplerHandle mapSampler(SamplerHandle, ItemTransformHandle);
+SamplerHandle filterSampler(SamplerHandle, ItemPredicateHandle);
 SamplerHandle sampleDataset(DatasetHandle);
 SamplerHandle sampleSamplers(SamplerList samplers, StringList samplerIDs,
                              DoubleList weights);
@@ -25,7 +25,8 @@ SamplerHandle segmentSamplerClasswise(SamplerHandle s,
                                       std::string_view classKey,
                                       size_t segmentSize, int64_t dim);
 
-SamplerHandle zipSamplerDataset(SamplerHandle s, DatasetHandle d);
+SamplerHandle zipSamplerDataset(SamplerHandle s, DatasetHandle d,
+                                std::string keyKey);
 
 BatchSamplerHandle sampleFixedBatch(SamplerHandle s, size_t batchSize);
 BatchSamplerHandle bucketSampler(SamplerHandle s, std::string_view sortKey,
@@ -36,11 +37,11 @@ struct Sampler : public std::enable_shared_from_this<Sampler> {
 
     // Apply a transform to all the samples.
     // The transform is lazy, only applied when sample() is called.
-    SamplerHandle map(ItemTransform func) {
+    SamplerHandle map(ItemTransformHandle func) {
         return mapSampler(shared_from_this(), func);
     }
     // Drop samples that do not pass the test.
-    SamplerHandle filter(ItemPredicate pred) {
+    SamplerHandle filter(ItemPredicateHandle pred) {
         return filterSampler(shared_from_this(), pred);
     }
     // Create n_threads workers that samples from this sampler and store the
@@ -51,8 +52,8 @@ struct Sampler : public std::enable_shared_from_this<Sampler> {
     BatchSamplerHandle batch(size_t batchSize) {
         return sampleFixedBatch(shared_from_this(), batchSize);
     }
-    SamplerHandle zipDataset(DatasetHandle d) {
-        return zipSamplerDataset(shared_from_this(), d);
+    SamplerHandle zipDataset(DatasetHandle d, std::string keyKey) {
+        return zipSamplerDataset(shared_from_this(), d, keyKey);
     }
     SamplerHandle segment(std::string_view bufferKey, size_t segmentSize,
                           int64_t dim) {

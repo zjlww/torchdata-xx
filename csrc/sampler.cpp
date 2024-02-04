@@ -14,6 +14,7 @@
 #include "types.h"
 
 namespace data {
+
 struct SegmentedSampler final : Sampler {
     SamplerHandle base{};
     size_t segmentSize{};
@@ -181,7 +182,7 @@ struct SampledDataset final : Sampler {
         auto dice = dist(_rng);
 
         auto key = base->getKey(dice);
-        auto it = (*base)[key];
+        auto it = base->getItem(dice);
 
         it.insert_or_assign("key", key.data());
         return it;
@@ -227,31 +228,31 @@ SamplerHandle sampleSamplers(SamplerList samplers, StringList samplerIDs,
 
 struct MappedSampler final : Sampler {
     SamplerHandle base;
-    ItemTransform func;
-    MappedSampler(SamplerHandle base, ItemTransform func)
+    ItemTransformHandle func;
+    MappedSampler(SamplerHandle base, ItemTransformHandle func)
         : base{base}, func{func} {}
-    Item sample() override { return func(base->sample()); }
+    Item sample() override { return (*func)(base->sample()); }
 };
 
-SamplerHandle mapSampler(SamplerHandle s, ItemTransform func) {
+SamplerHandle mapSampler(SamplerHandle s, ItemTransformHandle func) {
     return std::make_shared<MappedSampler>(std::move(s), std::move(func));
 }
 
 struct FilteredSampler final : Sampler {
     SamplerHandle base;
-    ItemPredicate pred;
-    FilteredSampler(SamplerHandle base, ItemPredicate pred)
+    ItemPredicateHandle pred;
+    FilteredSampler(SamplerHandle base, ItemPredicateHandle pred)
         : base{base}, pred{std::move(pred)} {}
     Item sample() override {
         auto item = (*base).sample();
-        while (not pred(item)) {
+        while (not(*pred)(item)) {
             item = (*base).sample();
         }
         return item;
     }
 };
 
-SamplerHandle filterSampler(SamplerHandle s, ItemPredicate pred) {
+SamplerHandle filterSampler(SamplerHandle s, ItemPredicateHandle pred) {
     return std::make_shared<FilteredSampler>(std::move(s), std::move(pred));
 }
 
@@ -453,14 +454,25 @@ SamplerHandle flattenBatch(BatchSamplerHandle s) {
     return std::make_shared<FlattenedBatchSampler>(s);
 }
 
-// The key of the item must be stored in item[key].
-SamplerHandle zipSamplerDataset(SamplerHandle s, DatasetHandle d) {
-    return mapSampler(s, [d](Item it) {
-        std::string const& key = std::get<std::string>(it["key"]);
-        auto dit = (*d)[key];
+struct ZippedSamplerDataset final : Sampler {
+    SamplerHandle s;
+    DatasetHandle d;
+    std::string keyKey{"key"};
+    ZippedSamplerDataset(SamplerHandle s, DatasetHandle d, std::string keyKey)
+        : s{std::move(s)}, d{std::move(d)}, keyKey{std::move(keyKey)} {}
+    Item sample() override {
+        Item it = s->sample();
+        std::string const& key = std::get<std::string>(it[keyKey]);
+        Item dit = (*d)[key];
         it.merge(std::move(dit));
         return it;
-    });
+    }
+};
+
+// The key of the item must be stored in item[key].
+SamplerHandle zipSamplerDataset(SamplerHandle s, DatasetHandle d,
+                                std::string keyKey) {
+    return std::make_shared<ZippedSamplerDataset>(s, d, keyKey);
 }
 
 }  // namespace data

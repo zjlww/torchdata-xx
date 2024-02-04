@@ -7,7 +7,33 @@
 #include <ranges>
 #include <stdexcept>
 
+#include "types.h"
+
 namespace data {
+
+struct ImmediateDataset final : Dataset {
+    ItemList imm;
+    ImmediateDataset(ItemDict const& items) {
+        keys.reserve(items.size());
+        imm.reserve(items.size());
+        for (auto const& p : items) {
+            auto const& [k, v] = p;
+            keys.push_back(k);
+        }
+    }
+    Item operator[](std::string_view key) override {
+        auto iter = std::lower_bound(keys.begin(), keys.end(), key);
+        if (iter == keys.end())
+            throw std::out_of_range("ImmediateDataset [] out of range");
+        auto idx = iter - keys.begin();
+        return imm[idx];
+    }
+    Item getItem(size_t idx) override { return imm.at(idx); }
+};
+
+DatasetHandle immediateDataset(ItemDict const& items) {
+    return std::make_shared<ImmediateDataset>(items);
+}
 
 struct ZippedDataset final : Dataset {
     DatasetList p_bases;
@@ -109,29 +135,30 @@ DatasetHandle prefixDataset(DatasetHandle base, std::string_view prefix) {
 
 struct MappedDataset final : Dataset {
     DatasetHandle base;
-    ItemTransform func;
-    MappedDataset(DatasetHandle base, ItemTransform func)
+    ItemTransformHandle func;
+    MappedDataset(DatasetHandle base, ItemTransformHandle func)
         : Dataset{base->keys}, base{std::move(base)}, func{std::move(func)} {}
     Item operator[](std::string_view key) override {
         auto&& b = *base;
-        return func(b[key]);
+        return (*func)(b[key]);
     }
 };
 
-DatasetHandle mapDataset(DatasetHandle base, ItemTransform func) {
+DatasetHandle mapDataset(DatasetHandle base, ItemTransformHandle func) {
     return std::make_shared<MappedDataset>(std::move(base), std::move(func));
 }
 
 struct FilteredDataset final : Dataset {
     DatasetHandle base;
-    KeyPredicate pred;
-    FilteredDataset(DatasetHandle base, KeyPredicate pred)
+    KeyPredicateHandle pred;
+    FilteredDataset(DatasetHandle base, KeyPredicateHandle pred)
         : Dataset{base->keys}, base{std::move(base)}, pred{std::move(pred)} {
-        keys.erase(std::remove_if(keys.begin(), keys.end(), std::not_fn(pred)),
+        keys.erase(std::remove_if(keys.begin(), keys.end(),
+                                  [pred](auto x) { return not(*pred)(x); }),
                    keys.end());
     }
     Item operator[](std::string_view key) override {
-        if (pred(key)) {
+        if ((*pred)(key)) {
             return (*base)[key];
         } else {
             throw std::runtime_error("Key not found in FilteredDataset");
@@ -139,7 +166,7 @@ struct FilteredDataset final : Dataset {
     }
 };
 
-DatasetHandle filterDataset(DatasetHandle base, KeyPredicate pred) {
+DatasetHandle filterDataset(DatasetHandle base, KeyPredicateHandle pred) {
     return std::make_shared<FilteredDataset>(std::move(base), std::move(pred));
 }
 

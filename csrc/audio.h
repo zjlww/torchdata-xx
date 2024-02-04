@@ -30,19 +30,23 @@ struct AudioMemoryFile : AudioFile {
 };
 
 // Read an audio from a file.
+// waveforms in shape [nSample, nChannel].
 // Returns the int32 encoded waveform and the sampling rate.
 std::pair<Tensor, double> readAudio(std::string_view path);
 
 // Read an audio from a memory buffer.
+// waveforms in shape [nSample, nChannel].
 // Returns the int32 encoded waveform and the sampling rate.
 std::pair<Tensor, double> readAudioMemory(void* data, size_t size);
 
 // Resample an audio from in_rate to out_rate.
+// waveforms in shape [nSample, nChannel].
 // Returns the resampled audio.
 // Implemented with soxr, you can change the parameters in the source code.
-Tensor resample(Tensor inWave, double inRate, double outRate);
+Tensor resample(Tensor inWave, double inRate, double outRate, double precision);
 
 // Save a waveform to target path. wave is IntTensor[nSample, nChannel].
-void wavSavePCM32Mono(Tensor wave, std::string_view path, sox_rate_t rate);
+void wavSavePCM(Tensor wave, std::string_view path, sox_rate_t sr,
+                unsigned int bits);
 
 }  // namespace data

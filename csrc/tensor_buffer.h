@@ -1,3 +1,4 @@
+#pragma once
 #include <torch/torch.h>
 
 #include <cstdint>
@@ -36,7 +37,7 @@ struct TensorBuffer {
         }
         auto a = b.slice(dim, 0, n);
         auto c = b.slice(dim, n);
-        buffer = c;
+        buffer = c.clone();
         return a;
     }
 };

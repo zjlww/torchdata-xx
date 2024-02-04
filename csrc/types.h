@@ -32,15 +32,24 @@ using BatchSamplerHandle = std::shared_ptr<BatchSampler>;
 // Data Types
 using Tensor = torch::Tensor;
 using IValue = torch::IValue;
-using ValueType =
-    std::variant<bool, int64_t, double, std::string, Tensor, DatasetHandle>;
+using ValueType = std::variant<bool, int64_t, double, std::string, Tensor,
+                               DatasetHandle, SamplerHandle>;
 using Item = std::map<std::string, ValueType>;
 using Partition = std::vector<std::tuple<int, int, int>>;
 
 // Functional Types
-using ItemTransform = std::function<Item(Item)>;
-using ItemPredicate = std::function<bool(Item const&)>;
-using KeyPredicate = std::function<bool(std::string_view)>;
+struct ItemTransform : public std::enable_shared_from_this<ItemTransform> {
+    virtual Item operator()(Item item) = 0;
+};
+struct ItemPredicate : public std::enable_shared_from_this<ItemPredicate> {
+    virtual bool operator()(Item const& item) = 0;
+};
+struct KeyPredicate : public std::enable_shared_from_this<KeyPredicate> {
+    virtual bool operator()(std::string_view sv) = 0;
+};
+using ItemTransformHandle = std::shared_ptr<ItemTransform>;
+using ItemPredicateHandle = std::shared_ptr<ItemPredicate>;
+using KeyPredicateHandle = std::shared_ptr<KeyPredicate>;
 
 // List Types
 using StringList = std::vector<std::string>;
@@ -49,6 +58,8 @@ using ItemList = std::vector<Item>;
 using KeyList = std::vector<std::string>;
 using DatasetList = std::vector<DatasetHandle>;
 using SamplerList = std::vector<SamplerHandle>;
+
+using ItemDict = std::map<std::string, Item>;
 
 // Utility Templates
 // Concatente multiple std::vector<ElementType>.

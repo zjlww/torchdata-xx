@@ -5,12 +5,14 @@
 namespace data {
 
 // Helper functions:
-DatasetHandle mapDataset(DatasetHandle d, ItemTransform func);
-DatasetHandle filterDataset(DatasetHandle d, KeyPredicate pred);
+DatasetHandle immediateDataset(ItemDict const& items);
+DatasetHandle loadShard(std::string_view path);
+
+DatasetHandle mapDataset(DatasetHandle d, ItemTransformHandle func);
+DatasetHandle filterDataset(DatasetHandle d, KeyPredicateHandle pred);
 DatasetHandle zipDatasets(DatasetList const& datasets);
 DatasetHandle unionDatasets(DatasetList const& datasets);
 DatasetHandle prefixDataset(DatasetHandle d, std::string_view prefix);
-DatasetHandle loadShard(std::string_view path);
 
 // Dataset interface:
 struct Dataset : public std::enable_shared_from_this<Dataset> {
@@ -30,12 +32,12 @@ struct Dataset : public std::enable_shared_from_this<Dataset> {
 
     // Apply a transform to all the items in the Dataset.
     // The transform is lazy, only applied when operator[] is called.
-    DatasetHandle map(ItemTransform func) {
+    DatasetHandle map(ItemTransformHandle func) {
         return mapDataset(shared_from_this(), std::move(func));
     }
 
     // Filter the dataset by keys.
-    DatasetHandle filter(KeyPredicate pred) {
+    DatasetHandle filter(KeyPredicateHandle pred) {
         return filterDataset(shared_from_this(), std::move(pred));
     }
 
@@ -60,8 +62,8 @@ struct Dataset : public std::enable_shared_from_this<Dataset> {
     SamplerHandle sample() { return sampleDataset(shared_from_this()); }
 
     // Save all items in a dataset to a map. This can be slow.
-    std::map<std::string, Item> toMap() {
-        std::map<std::string, Item> key_items;
+    ItemDict toMap() {
+        ItemDict key_items;
         for (auto&& key : keys) {
             key_items.emplace_hint(key_items.end(), key, (*this)[key]);
         }
