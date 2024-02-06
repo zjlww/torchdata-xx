@@ -12,7 +12,7 @@
 #include "audio.h"
 #include "dataset.h"
 #include "functional.h"
-#include "tensor_buffer.h"
+#include "tensor_utils.h"
 #include "types.h"
 
 namespace py = pybind11;
@@ -37,9 +37,14 @@ inline void bindFunctional(py::module& m) {
           py::arg("shiftMin"), py::arg("shiftMax"));
     F.def("rightPadSequenceFrame", rightPadSequenceFrame, py::arg("key"),
           py::arg("frameKey"), py::arg("dim"), py::arg("frameSize"));
+    F.def("rightTruncateSequenceFrame", rightTruncateSequenceFrame,
+          py::arg("key"), py::arg("frameKey"), py::arg("dim"),
+          py::arg("frameSize"));
     F.def("addInt64", addInt64, py::arg("keyA"), py::arg("keyB"),
           py::arg("keyC"), py::arg("bias"));
     F.def("readFile", readFile, py::arg("pathKey"), py::arg("textKey"));
+    F.def("readAudioTransform", readAudioTransform, py::arg{"pathKey"},
+          py::arg("waveKey"), py::arg("srKey"), py::arg("asFloat32"));
 }
 
 // Binding for csrc/dataset.h
@@ -96,15 +101,18 @@ inline void bindAudio(py::module& m) {
     auto A = m.def_submodule("audio", "Audio Utilities.");
     A.def("readAudio", readAudio, py::arg("path"));
     A.def("resample", resample, py::arg("inWave"), py::arg("inRate"),
-          py::arg("outRate"), py::arg("precision"));
+          py::arg("outRate"));
     A.def("wavSavePCM", wavSavePCM, py::arg("wave"), py::arg("path"),
           py::arg("sr"), py::arg("bits"));
 }
 
 // Binding for csrc//tensor_buffer.h
 inline void bindTensorBuffer(py::module& m) {
-    auto mBuffer =
-        py::class_<TensorBuffer>(m, "TensorBuffer").def(py::init<int64_t>());
+    auto mBuffer = py::class_<TensorBuffer>(m, "TensorBuffer")
+                       .def(py::init<int64_t>())
+                       .def("push", &TensorBuffer::push, py::arg("t"))
+                       .def("size", &TensorBuffer::size)
+                       .def("pop", &TensorBuffer::pop, py::arg("n"));
 }
 
 }  // namespace data

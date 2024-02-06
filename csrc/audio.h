@@ -43,10 +43,13 @@ std::pair<Tensor, double> readAudioMemory(void* data, size_t size);
 // waveforms in shape [nSample, nChannel].
 // Returns the resampled audio.
 // Implemented with soxr, you can change the parameters in the source code.
-Tensor resample(Tensor inWave, double inRate, double outRate, double precision);
+Tensor resample(Tensor inWave, double inRate, double outRate);
 
 // Save a waveform to target path. wave is IntTensor[nSample, nChannel].
 void wavSavePCM(Tensor wave, std::string_view path, sox_rate_t sr,
                 unsigned int bits);
 
+ItemTransformHandle readAudioTransform(std::string path_key,
+                                       std::string wave_key, std::string sr_key,
+                                       bool asFloat32);
 }  // namespace data

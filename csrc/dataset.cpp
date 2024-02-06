@@ -13,12 +13,13 @@ namespace data {
 
 struct ImmediateDataset final : Dataset {
     ItemList imm;
-    ImmediateDataset(ItemDict const& items) {
+    ImmediateDataset(ItemDict items) {
         keys.reserve(items.size());
         imm.reserve(items.size());
-        for (auto const& p : items) {
-            auto const& [k, v] = p;
-            keys.push_back(k);
+        for (auto&& p : items) {
+            auto&& [k, v] = p;
+            keys.emplace_back(std::move(k));
+            imm.emplace_back(std::move(v));
         }
     }
     Item operator[](std::string_view key) override {
@@ -31,7 +32,7 @@ struct ImmediateDataset final : Dataset {
     Item getItem(size_t idx) override { return imm.at(idx); }
 };
 
-DatasetHandle immediateDataset(ItemDict const& items) {
+DatasetHandle immediateDataset(ItemDict items) {
     return std::make_shared<ImmediateDataset>(items);
 }
 
@@ -177,12 +178,8 @@ struct LoadedShard final : Dataset {
         m = torch::jit::load(this->path);
         auto item_lst = m.named_modules();
         auto it = item_lst.begin();
-        for (int i = 0; i < item_lst.size(); ++i) {
-            if (i < 1)
-                ++it;
-            else {
-                keys.push_back((*it).name);
-            }
+        for (int i = 0; i < item_lst.size(); ++i, ++it) {
+            if (i >= 1) keys.push_back((*it).name);
         }
     }
 
@@ -192,10 +189,8 @@ struct LoadedShard final : Dataset {
 
         Item item{};
         auto it = lst.begin();
-        for (int i = 0; i < lst.size(); ++i) {
-            if (i < 2)
-                ++it;  // Skip the first two elements.
-            else {
+        for (int i = 0; i < lst.size(); ++i, ++it) {
+            if (i >= 2) {
                 auto name = (*it).name;
                 auto const& value = (*it).value;
                 if (value.isInt()) {

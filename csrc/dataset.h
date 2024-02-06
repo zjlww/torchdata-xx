@@ -5,7 +5,7 @@
 namespace data {
 
 // Helper functions:
-DatasetHandle immediateDataset(ItemDict const& items);
+DatasetHandle immediateDataset(ItemDict items);
 DatasetHandle loadShard(std::string_view path);
 
 DatasetHandle mapDataset(DatasetHandle d, ItemTransformHandle func);

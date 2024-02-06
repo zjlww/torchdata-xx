@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <string_view>
 
-#include "tensor_buffer.h"
+#include "tensor_utils.h"
 #include "types.h"
 
 namespace data {

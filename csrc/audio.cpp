@@ -1,12 +1,15 @@
 #include "audio.h"
 
-#include <ATen/ops/empty.h>
 #include <sox.h>
 #include <soxr.h>
 #include <torch/types.h>
 
+#include <climits>
+#include <memory>
 #include <stdexcept>
 #include <string_view>
+
+#include "types.h"
 
 namespace data {
 
@@ -52,17 +55,17 @@ AudioFile::~AudioFile() noexcept { auto result = sox_close(pt); }
 
 // There are a lot of specifications here, you may want to tune them.
 // Typically precision = 16, the higher the better.
-Tensor resample(Tensor inWave, double inRate, double outRate,
-                double precision) {
+Tensor resample(Tensor inWave, double inRate, double outRate) {
     unsigned channels = inWave.size(1);
     size_t in_length = inWave.size(0);
     size_t out_length = static_cast<size_t>(in_length * outRate / inRate + .5);
-    Tensor out_wave = torch::empty({channels, static_cast<int>(out_length)});
+    Tensor out_wave =
+        torch::empty({static_cast<int>(out_length), channels}, torch::kInt32);
 
     soxr_io_spec_t const io_spec{
         .itype = SOXR_INT32_I, .otype = SOXR_INT32_I, .scale = 1.0};
 
-    soxr_quality_spec_t const quality_spec{.precision = precision,
+    soxr_quality_spec_t const quality_spec{.precision = 20,
                                            .phase_response = 50,
                                            .passband_end = 0.95,
                                            .stopband_begin = 1.0};
@@ -106,6 +109,36 @@ void wavSavePCM(Tensor wave, std::string_view path, sox_rate_t sr,
         throw std::runtime_error("failed to write file at path: " +
                                  std::string(path));
     }
+}
+
+struct ReadAudioTransform final : public ItemTransform {
+    std::string pathKey;
+    std::string waveKey;
+    std::string srKey;
+    bool asFloat32;
+
+    ReadAudioTransform(std::string pathKey, std::string waveKey,
+                       std::string srKey, bool asFloat32)
+        : pathKey{pathKey},
+          waveKey{waveKey},
+          srKey{srKey},
+          asFloat32{asFloat32} {}
+    Item operator()(Item item) override {
+        auto [w, sr] = readAudio(std::get<std::string>(item[pathKey]));
+        if (asFloat32) {
+            w = w.to(torch::kFloat64) / double(INT_MAX);
+            w = w.to(torch::kFloat32);
+        }
+        item[waveKey] = w;
+        item[srKey] = sr;
+        return item;
+    }
+};
+
+ItemTransformHandle readAudioTransform(std::string pathKey, std::string waveKey,
+                                       std::string srKey, bool asFloat32) {
+    return std::make_shared<ReadAudioTransform>(pathKey, waveKey, srKey,
+                                                asFloat32);
 }
 
 }  // namespace data

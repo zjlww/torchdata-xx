@@ -58,6 +58,7 @@ using ItemList = std::vector<Item>;
 using KeyList = std::vector<std::string>;
 using DatasetList = std::vector<DatasetHandle>;
 using SamplerList = std::vector<SamplerHandle>;
+using TensorList = std::vector<Tensor>;
 
 using ItemDict = std::map<std::string, Item>;
 

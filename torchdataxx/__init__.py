@@ -1,7 +1,7 @@
 """
 A custom data loading library.
 An `Item` is a dictionary from strings to Any type.
-ItemType, Dataset, and Datasampler are fundamental types in the library.
+ItemType, Dataset, and Sampler are fundamental types in the library.
 """
 
 from pathlib import Path
@@ -33,9 +33,9 @@ Partition = List[Tuple[int, int, int]]
 
 if TYPE_CHECKING:
     from .functional import (
-        MappedDatasampler,
+        MappedSampler,
         MappedDataset,
-        FilteredDatasampler,
+        FilteredSampler,
         FilteredDataset,
     )
 
@@ -64,6 +64,10 @@ class Dataset(ABC):
         """Test whether key is within the existing key set."""
         pass
 
+    @property
+    def keys(self) -> List[str]:
+        return list(self)
+
     def map(self, func: Callable[[ItemType], ItemType]) -> "MappedDataset":
         from .functional import MappedDataset
 
@@ -85,17 +89,17 @@ class Sampler(ABC):
     def sample(self) -> ItemType:
         pass
 
-    def map(self, func: Callable[[ItemType], ItemType]) -> "MappedDatasampler":
-        from .functional import MappedDatasampler
+    def map(self, func: Callable[[ItemType], ItemType]) -> "MappedSampler":
+        from .functional import MappedSampler
 
-        return MappedDatasampler(self, func)
+        return MappedSampler(self, func)
 
     def filter(
         self, item_pred: Callable[[ItemType], bool], max_retry: int = 65536
-    ) -> "FilteredDatasampler":
-        from .functional import FilteredDatasampler
+    ) -> "FilteredSampler":
+        from .functional import FilteredSampler
 
-        return FilteredDatasampler(self, item_pred, max_retry)
+        return FilteredSampler(self, item_pred, max_retry)
 
 
 class BatchSampler(ABC):
@@ -136,14 +140,14 @@ class SampledDataset(Sampler):
             return self.dataset[choice(self.keys)]
 
 
-class SampledDatasamplers(Sampler):
+class SampledSamplers(Sampler):
     """
-    Sample from multiple datasamplers, with given weight with replacement.
+    Sample from multiple samplers, with given weight with replacement.
     Args:
-        samplers: Datasamplers.
-        sampler_ids: IDs of datasamplers, inorder to identify the source of
+        samplers: Samplers.
+        sampler_ids: IDs of samplers, inorder to identify the source of
             samples.
-        weights: Weights of each datasampler, can be any positive numbers.
+        weights: Weights of each sampler, can be any positive numbers.
     """
 
     def __init__(

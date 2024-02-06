@@ -31,9 +31,5 @@ target_link_libraries(SHAREDEP INTERFACE Torch Boost::thread Boost::system tbb s
 target_include_directories(SHAREDEP INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/csrc/")
 
 # Python Extension:
-pybind11_add_module(torchdataxx binding.cpp ${SRC_CPP})
-target_link_libraries(torchdataxx PRIVATE SHAREDEP)
-
-# Testing Target:
-add_executable(test test.cpp ${SRC_CPP})
-target_link_libraries(test PRIVATE SHAREDEP)
+pybind11_add_module(torchdataxx_C binding.cpp ${SRC_CPP})
+target_link_libraries(torchdataxx_C PRIVATE SHAREDEP)

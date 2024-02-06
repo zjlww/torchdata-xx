@@ -1,6 +1,6 @@
 from pathlib import Path
 from . import normalize_path, Dataset, ItemType
-from typing import Union, Callable, Iterator
+from typing import Union, Callable, Iterator, Dict
 
 
 class GlobPathDataset(Dataset):

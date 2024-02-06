@@ -13,15 +13,15 @@ def push_queue_forever(sampler: Sampler, queue: Queue) -> None:
             raise e
 
 
-class MemoryBufferedDatasampler(Sampler):
+class MemoryBufferedSampler(Sampler):
     """
     A multithreading sampling buffer.
 
-    This class accepts a datasampler and buffers the sampling process. The buffer
+    This class accepts a sampler and buffers the sampling process. The buffer
     samples in prior to fetch to reduce I/O delay.
 
     Args:
-        sampler (Datasampler): The datasampler to buffer.
+        sampler (Sampler): The sampler to buffer.
         n_threads (int): The number of threads to use for sampling.
         queue_size (int): The maximum size of the buffer queue.
 

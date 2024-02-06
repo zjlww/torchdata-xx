@@ -1,16 +1,17 @@
 #include "sampler.h"
 
-#include <ATen/ops/from_blob.h>
-#include <ATen/ops/pad_sequence.h>
 #include <c10/core/ScalarType.h>
 #include <tbb/enumerable_thread_specific.h>
 #include <torch/torch.h>
+#include <torch/types.h>
 
+#include <algorithm>
 #include <boost/thread/sync_bounded_queue.hpp>
 #include <memory>
 #include <variant>
 
 #include "dataset.h"
+#include "tensor_utils.h"
 #include "types.h"
 
 namespace data {
@@ -38,7 +39,7 @@ struct SegmentedSampler final : Sampler {
         }
         Tensor A = buffer.pop(segmentSize);
         Item it;
-        it.emplace(bufferKey, A);
+        it.emplace(bufferKey, std::move(A));
         return it;
     }
 };
@@ -385,7 +386,9 @@ std::vector<T> gather_values(ItemList const& items, std::string_view key) {
 
 template <typename S, torch::Dtype T> Tensor to_tensor(std::vector<S>& v) {
     auto opts = torch::TensorOptions().dtype(T);
-    return torch::from_blob(v.data(), int64_t(v.size()), opts);
+    Tensor r = torch::empty({static_cast<int>(v.size())}, opts);
+    std::copy_n(v.data(), v.size(), r.data_ptr<S>());
+    return r;
 }
 
 // This function transforms a list of items into a single item.
@@ -407,15 +410,21 @@ Item stack_items(ItemList const& items) {
             std::vector<double> vs = gather_values<double>(items, k);
             result[k] = to_tensor<double, torch::kDouble>(vs);
         } else if (std::holds_alternative<Tensor>(v)) {
-            // Construct the padded tensor:
             std::vector<Tensor> vs = gather_values<Tensor>(items, k);
-            Tensor V = torch::pad_sequence(vs, true, 0.0);
-            result[k] = V;
-
             // Construct the lens tensor:
+            int64_t max_N = 0;
             std::vector<int64_t> lens(N);
-            for (size_t i = 0; i < N; ++i) lens[i] = vs[i].size(0);
+            for (size_t i = 0; i < N; ++i) {
+                lens[i] = vs[i].size(0);
+                max_N = std::max(lens[i], max_N);
+            }
             result[k + "_lens"] = to_tensor<int64_t, torch::kInt64>(lens);
+
+            // Construct the padded tensor:
+            // For unknown reason, pad_sequence is exceptionally slow.
+            // Tensor V = torch::pad_sequence(vs, true, 0.0);
+            // Tensor V = torch::concat(vs, 0);
+            result[k] = data::pad_sequence(vs, 0, max_N);
         }
     }
     return result;

@@ -1,13 +1,10 @@
-#include <torch/torch.h>
-#include <torch/types.h>
-
 #include <iostream>
 
+#include "audio.h"
+
 int main() {
-    auto a = torch::empty({10}, torch::kInt32);
-    for (int i = 0; i < 10; ++i) {
-        auto b = a.data_ptr<int32_t>() + i;
-        *b = i;
-    }
-    std::cout << a << std::endl;
+    auto [w, sr] = data::readAudio(
+        "/mass/1/LibriTTS-R/dev-other/1585/157660/"
+        "1585_157660_000007_000000.wav");
+    std::cout << w << std::endl;
 }

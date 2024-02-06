@@ -57,7 +57,6 @@ class MappedDataset(Dataset):
     """
 
     def __init__(self, dataset: Dataset, func: Callable[[ItemType], ItemType]):
-        assert isinstance(dataset, Dataset)
         super().__init__()
         self.func = func
         self.dataset = dataset
@@ -75,17 +74,16 @@ class MappedDataset(Dataset):
         return iter(self.dataset)
 
 
-class MappedDatasampler(Sampler):
+class MappedSampler(Sampler):
     """
     Apply some function on the sampled item.
     Args:
-        datasampler: The datasampler to be modified.
+        sampler: The sampler to be modified.
         func: The modification function. The function can contain additional information
             on `drop_int_keys`, `drop_arr_keys`, `add_int_keys`, `add_arr_keys`.
     """
 
     def __init__(self, sampler: Sampler, func: Callable[[ItemType], ItemType]):
-        assert isinstance(sampler, Sampler)
         super().__init__()
         self.func = func
         self.sampler = sampler
@@ -95,7 +93,7 @@ class MappedDatasampler(Sampler):
         return self.func(item.copy())
 
 
-class FilteredDatasampler(Sampler):
+class FilteredSampler(Sampler):
     """
     Sample repeatedly until a sample passes the test.
     It is the user's responsibility to ensure that some item can pass the test
@@ -119,5 +117,5 @@ class FilteredDatasampler(Sampler):
             if self.pred(item):
                 return item
         raise RuntimeError(
-            f"FilteredDatasampler failed to sample after {self.max_retry} tries."
+            f"FilteredSampler failed to sample after {self.max_retry} tries."
         )
