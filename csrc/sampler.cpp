@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <boost/thread/sync_bounded_queue.hpp>
 #include <memory>
+#include <mutex>
 #include <variant>
 
 #include "dataset.h"
@@ -43,6 +44,7 @@ struct SegmentedSampler final : Sampler {
         return it;
     }
 };
+
 SamplerHandle segmentSampler(SamplerHandle s, std::string_view bufferKey,
                              size_t segmentSize, int64_t dim) {
     return std::make_shared<SegmentedSampler>(s, bufferKey, segmentSize, dim);
@@ -194,6 +196,46 @@ SamplerHandle sampleDataset(DatasetHandle d) {
     return std::make_shared<SampledDataset>(d);
 }
 
+struct PermuteSampledDataset final : Sampler {
+    DatasetHandle base;
+    std::mutex lock{};
+    size_t nextIdx{0};
+    size_t baseSize{0};
+    std::vector<size_t> indices{};
+    void next_shuffle() {
+        std::shuffle(indices.begin(), indices.end(),
+                     std::mt19937{std::random_device{}()});
+    }
+
+    explicit PermuteSampledDataset(DatasetHandle base)
+        : base{base}, baseSize{base->size()}, indices(baseSize) {
+        std::iota(indices.begin(), indices.end(), 0);
+        next_shuffle();
+    }
+
+    Item sample() override {
+        size_t localIdx;
+        {
+            const std::lock_guard<std::mutex> lg(lock);
+            localIdx = indices[nextIdx];
+            nextIdx += 1;
+            if (nextIdx == baseSize) {
+                nextIdx = 0;
+                next_shuffle();
+            }
+        }
+        auto key = base->getKey(localIdx);
+        auto it = base->getItem(localIdx);
+
+        it.insert_or_assign("key", key.data());
+        return it;
+    }
+};
+
+SamplerHandle permuteSampleDataset(DatasetHandle d) {
+    return std::make_shared<PermuteSampledDataset>(d);
+}
+
 struct SampledSamplers final : Sampler {
     SamplerList bases;
     StringList samplerIDs;
@@ -225,6 +267,57 @@ SamplerHandle sampleSamplers(SamplerList samplers, StringList samplerIDs,
            samplerIDs.size() == weights.size());
     return std::make_shared<SampledSamplers>(
         std::move(samplers), std::move(samplerIDs), std::move(weights));
+}
+
+struct ShardSampler final : Sampler {
+    SamplerHandle base;
+    std::string shardPathKey;
+    std::string shardIDKey;
+    size_t samplesPerShard{};
+    std::mutex lock;
+    size_t sampleCounter{};
+    DatasetHandle currentShard;
+    int64_t currentShardID;
+    SamplerHandle currentSampler;
+
+    ShardSampler(SamplerHandle base, std::string shardPathKey,
+                 std::string shardIDKey, size_t samplesPerShard)
+        : base{std::move(base)},
+          shardPathKey{std::move(shardPathKey)},
+          shardIDKey{std::move(shardIDKey)},
+          samplesPerShard{samplesPerShard},
+          sampleCounter{0} {
+        loadNextShard();
+    }
+
+    void loadNextShard() {
+        // This item is expected to contain the shard path.
+        auto item = base->sample();
+        auto shardPath = std::get<std::string>(item[shardPathKey]);
+        currentShardID = std::get<int64_t>(item[shardIDKey]);
+        currentShard = loadShard(shardPath);
+        currentSampler = currentShard->permuteSample();
+    }
+
+    Item sample() override {
+        {
+            const std::lock_guard<std::mutex> lg(lock);
+            sampleCounter += 1;
+            if (sampleCounter >= samplesPerShard) {
+                sampleCounter = 0;
+                loadNextShard();
+            }
+        }
+        auto item = currentSampler->sample();
+        item["shard_id"] = currentShardID;
+        return item;
+    }
+};
+
+SamplerHandle sampleShard(SamplerHandle s, std::string shardPathKey,
+                          std::string shardIDKey, size_t samplesPerShard) {
+    return std::make_shared<ShardSampler>(s, shardPathKey, shardIDKey,
+                                          samplesPerShard);
 }
 
 struct MappedSampler final : Sampler {

@@ -62,6 +62,7 @@ inline void bindDataset(py::module& m) {
             .def("merge", &Dataset::merge, py::arg("other"))
             .def("prefix", &Dataset::prefix, py::arg("prefix"))
             .def("sample", &Dataset::sample)
+            .def("permuteSample", &Dataset::permuteSample)
             .def("toMap", &Dataset::toMap);
     m.def("loadShard", loadShard, py::arg("path"));
     m.def("immediateDataset", immediateDataset, py::arg("items"));
@@ -87,7 +88,9 @@ inline void bindSampler(py::module& m) {
                  py::arg("bufferKey"), py::arg("classKey"),
                  py::arg("segmentSize"), py::arg("dim"))
             .def("bucket", &Sampler::bucket, py::arg("sortKey"),
-                 py::arg("partition"));
+                 py::arg("partition"))
+            .def("sampleShard", &Sampler::sampleShard, py::arg("shardPathKey"),
+                 py::arg("shardIDKey"), py::arg("samplesPerShard"));
 
     auto mBatchSampler =
         py::class_<BatchSampler, BatchSamplerHandle>(m, "BatchSampler")

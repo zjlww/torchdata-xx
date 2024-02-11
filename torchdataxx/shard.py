@@ -9,6 +9,11 @@ from torchdataxx import ShardType, PathType, normalize_path
 
 
 def gen_test_shard(n: int = 500, m: int = 20000) -> ShardType:
+    """
+    Generate a testing shard that contains n {
+        "x": torch.randn(m)
+    } items.
+    """
     shard = dict()
     for idx in range(n):
         shard[str(idx)] = {"x": torch.randn(m)}

@@ -10,9 +10,13 @@ namespace data {
 
 SamplerHandle mapSampler(SamplerHandle, ItemTransformHandle);
 SamplerHandle filterSampler(SamplerHandle, ItemPredicateHandle);
-SamplerHandle sampleDataset(DatasetHandle);
+
+SamplerHandle sampleDataset(DatasetHandle d);
+SamplerHandle permuteSampleDataset(DatasetHandle d);
+
 SamplerHandle sampleSamplers(SamplerList samplers, StringList samplerIDs,
                              DoubleList weights);
+
 SamplerHandle queueSampler(SamplerHandle s, size_t nThreads, size_t queueSize);
 
 SamplerHandle segmentSampler(SamplerHandle s, std::string_view bufferKey,
@@ -27,6 +31,9 @@ SamplerHandle segmentSamplerClasswise(SamplerHandle s,
 
 SamplerHandle zipSamplerDataset(SamplerHandle s, DatasetHandle d,
                                 std::string keyKey);
+
+SamplerHandle sampleShard(SamplerHandle s, std::string shardPathKey,
+                          std::string shardIDKey, size_t samplesPerShard);
 
 BatchSamplerHandle sampleFixedBatch(SamplerHandle s, size_t batchSize);
 BatchSamplerHandle bucketSampler(SamplerHandle s, std::string_view sortKey,
@@ -74,6 +81,13 @@ struct Sampler : public std::enable_shared_from_this<Sampler> {
     BatchSamplerHandle bucket(std::string_view sortKey, Partition p) {
         return bucketSampler(shared_from_this(), sortKey, p);
     }
+
+    SamplerHandle sampleShard(std::string shardPathKey, std::string shardIDKey,
+                              size_t samplesPerShard) {
+        return data::sampleShard(shared_from_this(), shardPathKey, shardIDKey,
+                                 samplesPerShard);
+    }
+
     virtual ~Sampler() = default;
 
    protected:

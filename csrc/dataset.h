@@ -60,6 +60,9 @@ struct Dataset : public std::enable_shared_from_this<Dataset> {
 
     // Convert a dataset into a sampler.
     SamplerHandle sample() { return sampleDataset(shared_from_this()); }
+    SamplerHandle permuteSample() {
+        return permuteSampleDataset(shared_from_this());
+    }
 
     // Save all items in a dataset to a map. This can be slow.
     ItemDict toMap() {

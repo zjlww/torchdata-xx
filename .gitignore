@@ -9,7 +9,7 @@
 /.vscode/
 /.idea/
 /*.ipynb
-/test.*
+/test*
 
 ### C ###
 # Prerequisites

@@ -17,21 +17,37 @@ def get_segment_sampler(
     S_device_queue: int,
     device: torch.device = torch.device("cpu"),
     same_speaker: bool = True,
+    samples_per_shard: int = 256,
 ) -> Sampler:
-    # First we need to
-    gpd = GlobPathDataset(dcfg.pattern_wav_glob, dcfg.path_dataset, dcfg.path_to_key)
-    paths = {}
-    for key, item in gpd.key_to_path.items():
-        paths[key] = {
-            "path": str(item["path"]),
-            "key": key,
-            "speaker": int(key.split("_")[0]),
+    ## Now switching to sharded dataset.
+    # gpd = GlobPathDataset(dcfg.pattern_wav_glob, dcfg.path_dataset, dcfg.path_to_key)
+    # paths = {}
+    # for key, item in gpd.key_to_path.items():
+    #     paths[key] = {
+    #         "path": str(item["path"]),
+    #         "key": key,
+    #         "speaker": int(key.split("_")[0]),
+    #     }
+    # paths = extension.immediateDataset(paths)
+    # sampler = paths.sample()
+    # sampler = sampler.map(
+    #     extension.functional.readAudioTransform("path", "wave", "sampling_rate", True)
+    # )
+
+    ## Loading pre-sharded dataset:
+    shard_paths = list(dcfg.path_shard.glob("**/*.pt"))
+    _d = {}
+    for shard_path in shard_paths:
+        _d[shard_path.stem] = {
+            "shard_path": str(shard_path),
+            "shard_id": int(shard_path.stem),
         }
-    paths = extension.immediateDataset(paths)
-    sampler = paths.sample()
-    sampler = sampler.map(
-        extension.functional.readAudioTransform("path", "wave", "sampling_rate", True)
+    sampler = (
+        extension.immediateDataset(_d)
+        .permuteSample()
+        .sampleShard("shard_path", "shard_id", samples_per_shard)
     )
+
     sampler = sampler.queue(S_io_thread, S_io_queue)
     if same_speaker:
         sampler = sampler.segmentClasswise("wave", "speaker", N_samples, 0)
