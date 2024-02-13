@@ -2,6 +2,7 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=c++,c,linux,windows,macos,clion+all,cmake,visualstudiocode,visualstudio,pycharm+all,jupyternotebooks,python
 
 ### Custom ###
+/torchdataxx_C
 /cmake-build-debug
 /cmake-build-release
 /build

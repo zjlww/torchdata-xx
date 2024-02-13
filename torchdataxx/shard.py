@@ -5,7 +5,7 @@ Save Item Shards with TorchScript.
 import torch
 from torch import nn
 from torch.jit import ScriptModule
-from torchdataxx import ShardType, PathType, normalize_path
+from . import ShardType, PathType, normalize_path
 
 
 def gen_test_shard(n: int = 500, m: int = 20000) -> ShardType:

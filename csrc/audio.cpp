@@ -141,4 +141,24 @@ ItemTransformHandle readAudioTransform(std::string pathKey, std::string waveKey,
                                                 asFloat32);
 }
 
+struct AudioPCM16AsFloat32Transform final : public ItemTransform {
+    std::string waveKey;
+    bool asFloat32;
+
+    AudioPCM16AsFloat32Transform(std::string waveKey) : waveKey{waveKey} {}
+    Item operator()(Item item) override {
+        auto w = std::get<Tensor>(item[waveKey]);
+        if (asFloat32) {
+            w = w.to(torch::kFloat64) / 32768.0;
+            w = w.to(torch::kFloat32);
+        }
+        item[waveKey] = w;
+        return item;
+    }
+};
+
+ItemTransformHandle audioPCM16AsFloat32(std::string waveKey) {
+    return std::make_shared<AudioPCM16AsFloat32Transform>(waveKey);
+}
+
 }  // namespace data

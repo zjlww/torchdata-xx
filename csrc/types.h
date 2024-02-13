@@ -98,4 +98,11 @@ template <typename Type> inline KeyList gather_keys_of_type(Item const& it) {
     return keys;
 }
 
+template <typename S, torch::Dtype T> Tensor to_tensor(std::vector<S>& v) {
+    auto opts = torch::TensorOptions().dtype(T);
+    Tensor r = torch::empty({static_cast<int>(v.size())}, opts);
+    std::copy_n(v.data(), v.size(), r.data_ptr<S>());
+    return r;
+}
+
 }  // namespace data

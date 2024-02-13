@@ -477,13 +477,6 @@ std::vector<T> gather_values(ItemList const& items, std::string_view key) {
     return result;
 }
 
-template <typename S, torch::Dtype T> Tensor to_tensor(std::vector<S>& v) {
-    auto opts = torch::TensorOptions().dtype(T);
-    Tensor r = torch::empty({static_cast<int>(v.size())}, opts);
-    std::copy_n(v.data(), v.size(), r.data_ptr<S>());
-    return r;
-}
-
 // This function transforms a list of items into a single item.
 // It accepts [T, ...] tensors, and pad into [B, T, ...] tensors.
 // And call torch::pad_sequence on the elements.

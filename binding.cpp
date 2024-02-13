@@ -13,6 +13,9 @@
 #include "dataset.h"
 #include "functional.h"
 #include "tensor_utils.h"
+#include "text/en_data.h"
+#include "text/phonemizer.h"
+#include "text/utils.h"
 #include "types.h"
 
 namespace py = pybind11;
@@ -45,6 +48,7 @@ inline void bindFunctional(py::module& m) {
     F.def("readFile", readFile, py::arg("pathKey"), py::arg("textKey"));
     F.def("readAudioTransform", readAudioTransform, py::arg{"pathKey"},
           py::arg("waveKey"), py::arg("srKey"), py::arg("asFloat32"));
+    F.def("audioPCM16AsFloat32", audioPCM16AsFloat32, py::arg("waveKey"));
 }
 
 // Binding for csrc/dataset.h
@@ -118,6 +122,23 @@ inline void bindTensorBuffer(py::module& m) {
                        .def("pop", &TensorBuffer::pop, py::arg("n"));
 }
 
+inline void bindText(py::module& m) {
+    auto T = m.def_submodule("text", "Text Utilities.");
+    T.attr("N_extra") = N_EXTRA;
+    T.attr("N_symbol") = N_SYMBOLS;
+
+    T.def(
+        "phonemize",
+        [](std::string_view text) {
+            auto&& p = espeak_phonemizer::get_thread_phonemizer();
+            return p.phonemize(text);
+        },
+        py::arg("text"));
+
+    T.def("encodeIPA", &encodeIPA, py::arg("IPA"));
+    T.def("encodeIPATransform", &encodeIPATransform, py::arg("IPAKey"),
+          py::arg("phoneIDKey"), py::arg("extraKey"), py::arg("nPhoneKey"));
+}
 }  // namespace data
 
 PYBIND11_MODULE(torchdataxx_C, m) {
@@ -127,4 +148,5 @@ PYBIND11_MODULE(torchdataxx_C, m) {
     data::bindSampler(m);
     data::bindAudio(m);
     data::bindTensorBuffer(m);
+    data::bindText(m);
 }

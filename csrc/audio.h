@@ -52,4 +52,6 @@ void wavSavePCM(Tensor wave, std::string_view path, sox_rate_t sr,
 ItemTransformHandle readAudioTransform(std::string path_key,
                                        std::string wave_key, std::string sr_key,
                                        bool asFloat32);
+ItemTransformHandle audioPCM16AsFloat32(std::string waveKey);
+
 }  // namespace data

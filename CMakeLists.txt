@@ -25,11 +25,15 @@ find_package (TBB REQUIRED)
 find_package (Boost REQUIRED COMPONENTS thread system)
 
 file(GLOB SRC_CPP "${CMAKE_CURRENT_SOURCE_DIR}/csrc/*.cpp")
+file(GLOB SRC_CPP_TEXT "${CMAKE_CURRENT_SOURCE_DIR}/csrc/text/*.cpp")
 
 add_library(SHAREDEP INTERFACE)
 target_link_libraries(SHAREDEP INTERFACE Torch Boost::thread Boost::system tbb sox soxr)
 target_include_directories(SHAREDEP INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/csrc/")
 
+# A multi-threading version of ESpeak-NG is absorbed.
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/espeak-ng)
+
 # Python Extension:
-pybind11_add_module(torchdataxx_C binding.cpp ${SRC_CPP})
-target_link_libraries(torchdataxx_C PRIVATE SHAREDEP)
+pybind11_add_module(torchdataxx_C binding.cpp ${SRC_CPP} ${SRC_CPP_TEXT})
+target_link_libraries(torchdataxx_C PRIVATE SHAREDEP espeak-ng)
