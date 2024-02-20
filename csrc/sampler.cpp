@@ -9,6 +9,7 @@
 #include <boost/thread/sync_bounded_queue.hpp>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
 #include <variant>
 
 #include "dataset.h"
@@ -320,6 +321,62 @@ SamplerHandle sampleShard(SamplerHandle s, std::string shardPathKey,
                                           samplesPerShard);
 }
 
+struct ZippedShardSampler final : Sampler {
+    SamplerHandle base;
+    StringList shardPathKeys;
+    std::string shardIDKey;
+    size_t samplesPerShard{};
+    std::mutex lock;
+    size_t sampleCounter{};
+    DatasetList currentShards;
+    DatasetHandle currentZippedShards;
+    int64_t currentShardID;
+    SamplerHandle currentSampler;
+
+    ZippedShardSampler(SamplerHandle base, StringList shardPathKeys,
+                       std::string shardIDKey, size_t samplesPerShard)
+        : base{std::move(base)},
+          shardPathKeys{std::move(shardPathKeys)},
+          shardIDKey{std::move(shardIDKey)},
+          samplesPerShard{samplesPerShard},
+          sampleCounter{0} {
+        loadNextShard();
+    }
+
+    void loadNextShard() {
+        // This item is expected to contain the shard path.
+        auto item = base->sample();
+        currentShards.clear();
+        currentShardID = std::get<int64_t>(item[shardIDKey]);
+        for (auto const& shardPathKey : shardPathKeys) {
+            auto shardPath = std::get<std::string>(item[shardPathKey]);
+            currentShards.push_back(loadShard(shardPath));
+        }
+        currentZippedShards = zipDatasets(currentShards);
+        currentSampler = currentZippedShards->permuteSample();
+    }
+
+    Item sample() override {
+        {
+            const std::lock_guard<std::mutex> lg(lock);
+            sampleCounter += 1;
+            if (sampleCounter >= samplesPerShard) {
+                sampleCounter = 0;
+                loadNextShard();
+            }
+        }
+        auto item = currentSampler->sample();
+        item["shard_id"] = currentShardID;
+        return item;
+    }
+};
+
+SamplerHandle sampleZipShard(SamplerHandle s, StringList shardPathKeys,
+                             std::string shardIDKey, size_t samplesPerShard) {
+    return std::make_shared<ZippedShardSampler>(s, shardPathKeys, shardIDKey,
+                                                samplesPerShard);
+}
+
 struct MappedSampler final : Sampler {
     SamplerHandle base;
     ItemTransformHandle func;
@@ -568,6 +625,66 @@ struct ZippedSamplerDataset final : Sampler {
 SamplerHandle zipSamplerDataset(SamplerHandle s, DatasetHandle d,
                                 std::string keyKey) {
     return std::make_shared<ZippedSamplerDataset>(s, d, keyKey);
+}
+
+struct RotaryCacheSampler : BatchSampler {
+    SamplerHandle s;
+    std::string cacheSuffix;
+    std::string classKey;
+    std::string keyKey;
+    // NEED OPTIMIZATION for now we are using a single mutex.
+    std::mutex lock;
+    std::map<int64_t, Item> itemCache;
+    RotaryCacheSampler(SamplerHandle s, std::string cacheSuffix,
+                       std::string classKey, std::string keyKey)
+        : s(s), cacheSuffix(cacheSuffix), classKey(classKey), keyKey(keyKey) {}
+
+    // HACK return an empty list if the cache missed.
+    ItemList sample() override {
+        auto item = s->sample();
+        bool hit = false;
+        int64_t clsID = std::get<int64_t>(item[classKey]);
+        {
+            std::lock_guard<std::mutex> guard(lock);
+            if (itemCache.contains(clsID)) {
+                // TODO ask a language lawyer what happens if we return an
+                // initializer list `return {item}`
+                auto cachedItem = std::move(itemCache[clsID]);
+                std::string_view cachedKey =
+                    std::get<std::string>(cachedItem[keyKey]);
+                std::string_view itemKey = std::get<std::string>(item[keyKey]);
+                itemCache[clsID] = item;
+                if (cachedKey != itemKey) {
+                    // Update item with stuff in cache:
+                    for (auto&& kv : cachedItem) {
+                        auto&& [k, v] = kv;
+                        item[k + cacheSuffix] = v;
+                    }
+                    hit = true;
+                }
+            } else {
+                itemCache[clsID] = item;
+            }
+        }
+        if (hit) {
+            ItemList _tmp;
+            _tmp.push_back(std::move(item));
+            return _tmp;
+        } else {
+            return {};
+        }
+    }
+};
+
+// For each item, read the Tensor stored in bufferKey, store it classwise.
+// It additionally verifies that the buffer contains different key.
+// Thus for this to work well, please use permutation based random sampler.
+SamplerHandle rotaryCacheSampler(SamplerHandle s, std::string cacheSuffix,
+                                 std::string classKey, std::string keyKey) {
+    auto sampler =
+        std::make_shared<RotaryCacheSampler>(s, cacheSuffix, classKey, keyKey);
+    // HACK a trick with BatchSampler
+    return sampler->flatten();
 }
 
 }  // namespace data

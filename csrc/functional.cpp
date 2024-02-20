@@ -150,4 +150,29 @@ struct ReadFile final : ItemTransform {
 ItemTransformHandle readFile(std::string pathKey, std::string textKey) {
     return std::make_shared<ReadFile>(pathKey, textKey);
 }
+
+struct TotalLength final : ItemTransform {
+    Item operator()(Item item) override {
+        auto n_phone = std::get<int64_t>(item["n_phone"]);
+        auto n_frame = std::get<int64_t>(item["n_frame"]);
+        item["n_total"] = n_phone + 2 * n_frame;
+        return item;
+    }
+};
+
+ItemTransformHandle addTotalLength() { return std::make_shared<TotalLength>(); }
+
+struct TotalLengthWithRef final : ItemTransform {
+    Item operator()(Item item) override {
+        auto n_phone = std::get<int64_t>(item["n_phone"]);
+        auto n_frame = std::get<int64_t>(item["n_frame"]);
+        auto n_frame_ref = std::get<int64_t>(item["n_frame_ref"]);
+        item["n_total"] = n_phone + 2 * n_frame + n_frame_ref;
+        return item;
+    }
+};
+
+ItemTransformHandle addTotalLengthWithRef() {
+    return std::make_shared<TotalLengthWithRef>();
+};
 }  // namespace data

@@ -34,10 +34,15 @@ SamplerHandle zipSamplerDataset(SamplerHandle s, DatasetHandle d,
 
 SamplerHandle sampleShard(SamplerHandle s, std::string shardPathKey,
                           std::string shardIDKey, size_t samplesPerShard);
+SamplerHandle sampleZipShard(SamplerHandle s, StringList shardPathKeys,
+                             std::string shardIDKey, size_t samplesPerShard);
 
 BatchSamplerHandle sampleFixedBatch(SamplerHandle s, size_t batchSize);
 BatchSamplerHandle bucketSampler(SamplerHandle s, std::string_view sortKey,
                                  Partition p);
+
+SamplerHandle rotaryCacheSampler(SamplerHandle s, std::string cacheSuffix,
+                                 std::string classKey, std::string keyKey);
 
 struct Sampler : public std::enable_shared_from_this<Sampler> {
     virtual Item sample() = 0;
@@ -88,6 +93,19 @@ struct Sampler : public std::enable_shared_from_this<Sampler> {
                                  samplesPerShard);
     }
 
+    SamplerHandle sampleZipShard(StringList shardPathKeys,
+                                 std::string shardIDKey,
+                                 size_t samplesPerShard) {
+        return data::sampleZipShard(shared_from_this(), shardPathKeys,
+                                    shardIDKey, samplesPerShard);
+    }
+
+    SamplerHandle rotaryCache(std::string cacheSuffix, std::string classKey,
+                              std::string keyKey) {
+        return data::rotaryCacheSampler(shared_from_this(), cacheSuffix,
+                                        classKey, keyKey);
+    }
+
     virtual ~Sampler() = default;
 
    protected:
@@ -98,6 +116,7 @@ SamplerHandle stackBatch(BatchSamplerHandle s);
 SamplerHandle flattenBatch(BatchSamplerHandle s);
 
 struct BatchSampler : public std::enable_shared_from_this<BatchSampler> {
+    // Can return empty list:
     virtual ItemList sample() = 0;
     // Stacking returned batch
     SamplerHandle stack() { return stackBatch(shared_from_this()); }

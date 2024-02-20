@@ -45,6 +45,8 @@ inline void bindFunctional(py::module& m) {
           py::arg("frameSize"));
     F.def("addInt64", addInt64, py::arg("keyA"), py::arg("keyB"),
           py::arg("keyC"), py::arg("bias"));
+    F.def("addTotalLength", addTotalLength);
+    F.def("addTotalLengthWithRef", addTotalLengthWithRef);
     F.def("readFile", readFile, py::arg("pathKey"), py::arg("textKey"));
     F.def("readAudioTransform", readAudioTransform, py::arg{"pathKey"},
           py::arg("waveKey"), py::arg("srKey"), py::arg("asFloat32"));
@@ -94,7 +96,12 @@ inline void bindSampler(py::module& m) {
             .def("bucket", &Sampler::bucket, py::arg("sortKey"),
                  py::arg("partition"))
             .def("sampleShard", &Sampler::sampleShard, py::arg("shardPathKey"),
-                 py::arg("shardIDKey"), py::arg("samplesPerShard"));
+                 py::arg("shardIDKey"), py::arg("samplesPerShard"))
+            .def("sampleZipShard", &Sampler::sampleZipShard,
+                 py::arg("shardPathKeys"), py::arg("shardIDKey"),
+                 py::arg("samplesPerShard"))
+            .def("rotaryCache", &Sampler::rotaryCache, py::arg("cacheSuffix"),
+                 py::arg("classKey"), py::arg("keyKey"));
 
     auto mBatchSampler =
         py::class_<BatchSampler, BatchSamplerHandle>(m, "BatchSampler")
@@ -126,6 +133,8 @@ inline void bindText(py::module& m) {
     auto T = m.def_submodule("text", "Text Utilities.");
     T.attr("N_extra") = N_EXTRA;
     T.attr("N_symbol") = N_SYMBOLS;
+    T.attr("symbols") = symbols;
+    T.attr("symbol_to_id") = symbol_to_id;
 
     T.def(
         "phonemize",

@@ -90,11 +90,18 @@ struct EncodeIPATransform final : ItemTransform {
           extraKey{extraKey},
           nPhoneKey{nPhoneKey} {}
     Item operator()(Item item) override {
-        const auto& IPA = std::get<std::string>(item[IPAKey]);
+        std::string IPA = std::get<std::string>(item[IPAKey]);
+        // HACK Special begin and end of sentences symbols.
+        IPA = "<" + IPA + ">";
+        // END HACK
         auto [phoneID, extra] = encodeIPA(IPA);
         item[nPhoneKey] = phoneID.numel();
         item[phoneIDKey] = phoneID;
         item[extraKey] = extra;
+        // HACK Add a counter for the number of syllables.
+        item["n_vowel"] =
+            ((phoneID < 40) & (phoneID >= 2)).sum().item<int64_t>();
+        // END HACK
         return item;
     }
 };

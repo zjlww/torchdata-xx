@@ -19,4 +19,8 @@ ItemTransformHandle rightTruncateSequenceFrame(std::string key,
 ItemTransformHandle addInt64(std::string keyA, std::string keyB,
                              std::string keyC, int64_t bias);
 ItemTransformHandle readFile(std::string pathKey, std::string textKey);
+// HACK this is for AR training
+ItemTransformHandle addTotalLength();
+ItemTransformHandle addTotalLengthWithRef();
+// END HACK
 }  // namespace data

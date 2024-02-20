@@ -73,7 +73,7 @@ constexpr inline std::array diphthongs{"ɔɪ", "eɪ", "aʊ", "oʊ",
 constexpr inline std::array affricates{"tʃ", "ts", "dʒ"};
 
 constexpr inline auto phones =
-    concatenate_array(diphthongs, affricates, vowels, consonants_pulmonic,
+    concatenate_array(vowels, diphthongs, affricates, consonants_pulmonic,
                       consonants_non_pulmonic, other_ipa);
 
 constexpr inline auto symbols = concatenate_array(std::array{"_", " "}, phones);
